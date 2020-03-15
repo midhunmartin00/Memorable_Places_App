@@ -1,16 +1,22 @@
 package com.example.memorableplaces;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.model.LatLng;
 
@@ -28,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        SharedPreferences sharedPreferences=this.getSharedPreferences("com.example.memorableplaces", Context.MODE_PRIVATE);
+        final SharedPreferences sharedPreferences=this.getSharedPreferences("com.example.memorableplaces", Context.MODE_PRIVATE);
         ArrayList<String> latitudes=new ArrayList<String>();
         ArrayList<String> longitudes=new ArrayList<String>();
         locations.clear();
@@ -65,6 +71,47 @@ public class MainActivity extends AppCompatActivity {
                 intent.putExtra("position",position);
                 startActivity(intent);
             }
+        });
+        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+//                Toast.makeText(MainActivity.this,places.get(position), Toast.LENGTH_SHORT).show();
+                view.setSelected(true);
+                final int i=position;
+                if(i!=0) {
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setIcon(android.R.drawable.ic_delete)
+                            .setTitle("Are you sure")
+                            .setMessage("Do you want to delete this Item")
+                            .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    locations.remove(i);
+                                    places.remove(i);
+                                    adapter.notifyDataSetChanged();
+                                    try {
+                                        ArrayList<String> latitudes=new ArrayList<String>();
+                                        ArrayList<String> longitudes=new ArrayList<String>();
+                                        for(LatLng i:MainActivity.locations){
+                                            latitudes.add(Double.toString(i.latitude));
+                                            longitudes.add(Double.toString(i.longitude));
+                                        }
+                                        sharedPreferences.edit().putString("places",ObjectSerializer.serialize(MainActivity.places)).apply();
+                                        sharedPreferences.edit().putString("lats",ObjectSerializer.serialize(latitudes)).apply();
+                                        sharedPreferences.edit().putString("longs",ObjectSerializer.serialize(longitudes)).apply();
+
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+
+                                }
+                            })
+                            .setNegativeButton("No", null)
+                            .show();
+                }
+                return true;
+            }
+
         });
      }
 }
