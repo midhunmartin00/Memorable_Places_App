@@ -15,6 +15,9 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -76,9 +79,20 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
 //                Toast.makeText(MainActivity.this,places.get(position), Toast.LENGTH_SHORT).show();
-                view.setSelected(true);
                 final int i=position;
                 if(i!=0) {
+                    EditText editText=new EditText(MainActivity.this);
+//                    editText.setText("Enter the location name");
+//                    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+//                    lp.setMarginStart(100);
+//                    lp.setMarginEnd(100);
+//                    editText.setLayoutParams(lp);
+                    FrameLayout frameLayout=new FrameLayout(MainActivity.this);
+                    FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,FrameLayout.LayoutParams.MATCH_PARENT);
+                    lp.leftMargin=getResources().getDimensionPixelSize(R.dimen.dialog_margin);
+                    lp.rightMargin=getResources().getDimensionPixelSize(R.dimen.dialog_margin);
+                    editText.setLayoutParams(lp);
+                    frameLayout.addView(editText);
                     new AlertDialog.Builder(MainActivity.this)
                             .setIcon(android.R.drawable.ic_delete)
                             .setTitle("Are you sure")

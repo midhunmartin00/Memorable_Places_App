@@ -1,12 +1,14 @@
 package com.example.memorableplaces;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -17,13 +19,17 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
@@ -76,7 +82,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      */
     public void markLocation(Location location,String title){
         LatLng sydney = new LatLng(location.getLatitude(), location.getLongitude());
-        mMap.addMarker(new MarkerOptions().position(sydney).title(title));
+        mMap.addMarker(new MarkerOptions().position(sydney).title(title)).setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(sydney,12));
     }
     @Override
@@ -135,7 +141,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 Log.i("error", "onMapReady: ");
             }
             markLocation(location1,MainActivity.places.get(position));
-
         }
         googleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
@@ -145,9 +150,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 try {
                     List<Address> addressList=geocoder.getFromLocation(latLng.latitude,latLng.longitude,1);
                     Log.i("location", addressList.toString());
-                    markerOptions.title(addressList.get(0).getFeatureName());
+                    String add="";
+                    if(addressList!=null && addressList.size()>0){
+                        if(addressList.get(0).getThoroughfare()!=null){
+                            if(addressList.get(0).getSubThoroughfare()!=null)
+                                add+=addressList.get(0).getSubThoroughfare()+" ";
+                            add+=addressList.get(0).getThoroughfare();
+                        }
+                    }
+//        Log.i("location", addressList.toString());
+                    if(add.equals("")){
+                        SimpleDateFormat sdf=new SimpleDateFormat("HH:mm yyyy-MM-dd");
+                        add+=sdf.format(new Date());
+                    }
+                    markerOptions.title(add);
                     mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
-                    mMap.addMarker(markerOptions);
+                    mMap.addMarker(markerOptions).setTag(0);
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -155,6 +173,55 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
+        googleMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(final Marker marker) {
+                if (marker.getTag().toString().equals("0")) {
+                    final EditText editText = new EditText(MapsActivity.this);
+                    FrameLayout frameLayout = new FrameLayout(MapsActivity.this);
+                    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
+                    lp.leftMargin = getResources().getDimensionPixelSize(R.dimen.dialog_margin);
+                    lp.rightMargin = getResources().getDimensionPixelSize(R.dimen.dialog_margin);
+                    editText.setLayoutParams(lp);
+                    editText.setText(marker.getTitle().toString());
+                    frameLayout.addView(editText);
+                    new AlertDialog.Builder(MapsActivity.this)
+                            .setIcon(android.R.drawable.sym_def_app_icon)
+                            .setTitle("Are you sure")
+                            .setMessage("Do you want to add this item to your Memorable Places\n\nEnter a name for the memorable place")
+                            .setView(frameLayout)
+                            .setPositiveButton("Add", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    MainActivity.locations.add(marker.getPosition());
+                                    MainActivity.places.add(editText.getText().toString());
+                                    Toast.makeText(MapsActivity.this, "Location Saved", Toast.LENGTH_SHORT).show();
+                                    MainActivity.adapter.notifyDataSetChanged();
+
+                                    SharedPreferences sharedPreferences = MapsActivity.this.getSharedPreferences("com.example.memorableplaces", Context.MODE_PRIVATE);
+                                    try {
+                                        ArrayList<String> latitudes = new ArrayList<String>();
+                                        ArrayList<String> longitudes = new ArrayList<String>();
+                                        for (LatLng i : MainActivity.locations) {
+                                            latitudes.add(Double.toString(i.latitude));
+                                            longitudes.add(Double.toString(i.longitude));
+                                        }
+                                        sharedPreferences.edit().putString("places", ObjectSerializer.serialize(MainActivity.places)).apply();
+                                        sharedPreferences.edit().putString("lats", ObjectSerializer.serialize(latitudes)).apply();
+                                        sharedPreferences.edit().putString("longs", ObjectSerializer.serialize(longitudes)).apply();
+                                        marker.setTag(1);
+                                        marker.setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                }
+            return true;
+        }
+    });
     }
 
     @Override
@@ -183,8 +250,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         markerOptions.title(add);
+        markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
 //        mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
-        mMap.addMarker(markerOptions);
+        mMap.addMarker(markerOptions).setTag(1);
         MainActivity.locations.add(latLng);
         MainActivity.places.add(add);
         Toast.makeText(this, "Location Saved", Toast.LENGTH_SHORT).show();
